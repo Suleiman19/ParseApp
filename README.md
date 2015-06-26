@@ -8,3 +8,6 @@ this data and store it in Parse.
 
 When a returning user logs in, we pull their data
 from Parse and display.
+
+NOTE: Be sure to replace your Facebook AppID in strings.xml,
+Parse Application ID and Client Key in MyApp.java.
