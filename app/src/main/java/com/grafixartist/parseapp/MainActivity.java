@@ -32,6 +32,7 @@ import com.parse.ParseUser;
 import com.parse.SaveCallback;
 
 import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.io.BufferedInputStream;
 import java.io.ByteArrayOutputStream;
@@ -52,6 +53,7 @@ public class MainActivity extends AppCompatActivity {
     TextView mUsername, mEmailID;
     Profile mFbProfile;
     ParseUser parseUser;
+
     String name = null, email = null;
 
     public static final List<String> mPermissions = new ArrayList<String>() {{
@@ -88,9 +90,7 @@ public class MainActivity extends AppCompatActivity {
                 md.update(signature.toByteArray());
                 Log.d("KeyHash:", Base64.encodeToString(md.digest(), Base64.DEFAULT));
             }
-        } catch (PackageManager.NameNotFoundException e) {
-
-        } catch (NoSuchAlgorithmException e) {
+        } catch (PackageManager.NameNotFoundException | NoSuchAlgorithmException e) {
 
         }
 
@@ -107,7 +107,6 @@ public class MainActivity extends AppCompatActivity {
                         } else if (user.isNew()) {
                             Log.d("MyApp", "User signed up and logged in through Facebook!");
                             getUserDetailsFromFB();
-//                            saveNewUser();
                         } else {
                             Log.d("MyApp", "User logged in through Facebook!");
                             getUserDetailsFromParse();
@@ -124,50 +123,71 @@ public class MainActivity extends AppCompatActivity {
         parseUser.setUsername(name);
         parseUser.setEmail(email);
 
+
 //        Saving profile photo as a ParseFile
         ByteArrayOutputStream stream = new ByteArrayOutputStream();
         Bitmap bitmap = ((BitmapDrawable) mProfileImage.getDrawable()).getBitmap();
-        bitmap.compress(Bitmap.CompressFormat.JPEG, 70, stream);
-        byte[] data = stream.toByteArray();
-        String thumbName = parseUser.getUsername().replaceAll("\\s+", "");
-        final ParseFile parseFile = new ParseFile(thumbName + "_thumb.jpg", data);
+        if (bitmap != null) {
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 70, stream);
+            byte[] data = stream.toByteArray();
+            String thumbName = parseUser.getUsername().replaceAll("\\s+", "");
+            final ParseFile parseFile = new ParseFile(thumbName + "_thumb.jpg", data);
 
-        parseFile.saveInBackground(new SaveCallback() {
-            @Override
-            public void done(ParseException e) {
-                parseUser.put("profileThumb", parseFile);
+            parseFile.saveInBackground(new SaveCallback() {
+                @Override
+                public void done(ParseException e) {
+                    parseUser.put("profileThumb", parseFile);
 
-                //Finally save all the user details
-                parseUser.saveInBackground(new SaveCallback() {
-                    @Override
-                    public void done(ParseException e) {
-                        Toast.makeText(MainActivity.this, "New user:" + name + " Signed up", Toast.LENGTH_SHORT).show();
-                    }
-                });
+                    //Finally save all the user details
+                    parseUser.saveInBackground(new SaveCallback() {
+                        @Override
+                        public void done(ParseException e) {
+                            Toast.makeText(MainActivity.this, "New user:" + name + " Signed up", Toast.LENGTH_SHORT).show();
+                        }
+                    });
 
-            }
-        });
+                }
+            });
+        }
 
     }
 
 
     private void getUserDetailsFromFB() {
 
+        // Suggested by https://disqus.com/by/dominiquecanlas/
+        Bundle parameters = new Bundle();
+        parameters.putString("fields", "email,name,picture");
+
+
         new GraphRequest(
                 AccessToken.getCurrentAccessToken(),
                 "/me",
-                null,
+                parameters,
                 HttpMethod.GET,
                 new GraphRequest.Callback() {
                     public void onCompleted(GraphResponse response) {
             /* handle the result */
                         try {
+
+                            Log.d("Response", response.getRawResponse());
+
                             email = response.getJSONObject().getString("email");
                             mEmailID.setText(email);
+
                             name = response.getJSONObject().getString("name");
                             mUsername.setText(name);
 
-                            saveNewUser();
+                            JSONObject picture = response.getJSONObject().getJSONObject("picture");
+                            JSONObject data = picture.getJSONObject("data");
+
+                            //  Returns a 50x50 profile picture
+                            String pictureUrl = data.getString("url");
+
+                            Log.d("Profile pic", "url: " + pictureUrl);
+
+                            new ProfilePhotoAsync(pictureUrl).execute();
+
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
@@ -175,10 +195,8 @@ public class MainActivity extends AppCompatActivity {
                 }
         ).executeAsync();
 
-        ProfilePhotoAsync profilePhotoAsync = new ProfilePhotoAsync(mFbProfile);
-        profilePhotoAsync.execute();
-
     }
+
 
     private void getUserDetailsFromParse() {
         parseUser = ParseUser.getCurrentUser();
@@ -224,18 +242,17 @@ public class MainActivity extends AppCompatActivity {
 
 
     class ProfilePhotoAsync extends AsyncTask<String, String, String> {
-        Profile profile;
         public Bitmap bitmap;
+        String url;
 
-        public ProfilePhotoAsync(Profile profile) {
-            this.profile = profile;
+        public ProfilePhotoAsync(String url) {
+            this.url = url;
         }
 
         @Override
         protected String doInBackground(String... params) {
             // Fetching data from URI and storing in bitmap
-            bitmap = DownloadImageBitmap(profile.getProfilePictureUri(200, 200).toString());
-
+            bitmap = DownloadImageBitmap(url);
             return null;
         }
 
@@ -243,6 +260,8 @@ public class MainActivity extends AppCompatActivity {
         protected void onPostExecute(String s) {
             super.onPostExecute(s);
             mProfileImage.setImageBitmap(bitmap);
+
+            saveNewUser();
         }
     }
 

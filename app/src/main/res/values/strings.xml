@@ -3,5 +3,10 @@
 
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
-    <string name="facebook_app_id">Your Facebook App ID Here</string>
+
+    <string name="facebook_app_id">your_facebook_app_id</string>
+
+    <string name="parse_application_id">your_parse_application_id</string>
+    <string name="parse_client_key">your_parse_client_key</string>
+
 </resources>

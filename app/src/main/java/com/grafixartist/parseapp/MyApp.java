@@ -15,10 +15,11 @@ public class MyApp extends Application {
     public void onCreate() {
         super.onCreate();
 
-        // Enable Local Datastore.
+        // [Optional] Power your app with Local Datastore. For more info, go to
+        // https://parse.com/docs/android/guide#local-datastore
         Parse.enableLocalDatastore(this);
 
-        Parse.initialize(this, "Application ID", "Client Key");
+        Parse.initialize(this);
         FacebookSdk.sdkInitialize(getApplicationContext());
         ParseFacebookUtils.initialize(this);
     }
